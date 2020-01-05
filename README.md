@@ -1,12 +1,19 @@
 # Convert Video 
- 
+
+
+## Requirements
+
+- Python 3.7
+- brew install hachoir-metadata
+- brew install ffmpeg
+
 
 ## Quick start
  
 ```sh
 git clone git@github.com:dstoianov/video-converter.git
 cd video-converter/
-virtualenv .venv --python=python3
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m pytest

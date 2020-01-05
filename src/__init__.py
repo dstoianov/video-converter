@@ -20,8 +20,10 @@ def write_to_csv_file(csv_file_name: str, files: list, fnames: List[str]):
         return
     logger.info("Write to csv '%s' file...", csv_file_name)
 
+    sorted_list = sorted(files, key=lambda i: i['name'])
+
     with open(csv_file_name, mode='w') as f:
         writer = csv.DictWriter(f, fieldnames=fnames, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writeheader()
-        for movie in files:
-            writer.writerow(movie)
+        for file in sorted_list:
+            writer.writerow(file)
