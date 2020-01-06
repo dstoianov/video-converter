@@ -2,23 +2,25 @@ import os
 import shlex
 import subprocess
 import time
-from datetime import timedelta
 
 from src import logger, write_to_csv_file
 
-# path = '/Users/dstoianov/Documents/convert-video/'
-path = '/media/funker/3/FOTO/2014/'
+path = '/Users/dstoianov/Documents/convert-video/'
+# path = '/media/funker/3/FOTO/2014/'
 
-csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv"
+csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv".lower()
 
 files = []
 files_ext = {}
 skipped_file_extensions = ['nfo', 'ini', 'jpg', 'nef', 'txt', 'db', 'png', 'jpeg', 'sh', 'gif', 'pdf', 'ppt', 'mp3',
-                           'xls',
-                           'mht', 'htm', 'zip', ]
+                           'xls', 'mht', 'htm', 'zip', ]
 
 """
-http://coderunner.io/shrink-videos-with-ffmpeg-and-preserve-metadata/
+19 FFmpeg Commands For All Needs
+        https://catswhocode.com/ffmpeg-commands/
+
+Video files taking up too much space? Let's shrink them with FFmpeg!
+        http://coderunner.io/shrink-videos-with-ffmpeg-and-preserve-metadata/
 
 
 ffmpeg -i "input.mp4" -copy_unknown -map_metadata 0 -map 0 -codec copy \
@@ -82,7 +84,7 @@ def read_files():
 
 def convert_videos(files):
     logger.info("=== " * 20)
-    logger.info("Going to convert files..")
+    logger.info("Convert files..")
     # 18 more quality, 23 - default, 28 less quality
     crf = 23
     prefix = '-ffmpeg-crf-'
@@ -111,11 +113,11 @@ def convert_videos(files):
                 raise Exception('Error. Check parameters for decoding.')
 
         size_mb = round(os.path.getsize(output_file) / 1024 / 1024, 2)
-        logger.info("\tElapsed time '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - start)))
-        logger.info("\tOld size '%sMb' --> new size '%sMB', ratio '%.4s'", filename['size'], size_mb,
+        logger.info("\tElapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - start)))
+        logger.info("\tOld size '%sMB' --> new size '%sMB', ratio '%.4s'", filename['size'], size_mb,
                     filename['size'] / size_mb)
 
-    logger.info("Total elapsed time for converting '%s'", str(timedelta(seconds=(time.time() - g_start))))
+    logger.info("Total elapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - g_start)))
 
 
 def collect_statistics():
@@ -166,8 +168,6 @@ def list_duplicates(seq):
 
 
 def delete_files(files: list, delete=False):
-    logger.info("Potential released size '%.7sMB'", sum([i['size'] for i in files]))
-
     for file in files:
         logger.info(f"Removing file '{file['path']}'..")
         if delete:
@@ -177,7 +177,16 @@ def delete_files(files: list, delete=False):
 
 def delete_decoded_files(delete):
     all_files = read_files()
-    files_to_delete = list(filter(lambda d: '-crf-23.mp4' not in d['name'], all_files))
+    logger.info("=== " * 20)
+    logger.info("Delete converted files..")
+    files_converted = list(filter(lambda d: '-crf-23.mp4' not in d['name'], all_files))
+    files_to_delete = list(filter(lambda d: '-crf-23.mp4' in d['name'], all_files))
+
+    new_size = sum([i['size'] for i in files_to_delete])
+    old_size = sum([i['size'] for i in files_converted])
+    logger.info("Old size '%.7sMB', new size '%.7sMB', released size '%.7sMB'", old_size, new_size,
+                (old_size - new_size))
+
     delete_files(files_to_delete, delete)
 
 
@@ -191,6 +200,6 @@ if __name__ == "__main__":
     write_to_csv_file(csv_file_name, files, fnames)
     convert_videos(files)
 
-    # delete_decoded_files(delete=False)
+    delete_decoded_files(delete=False)
 
     logger.info('Done')
