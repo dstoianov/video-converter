@@ -24,7 +24,8 @@ python -m pytest
 
 1. [19 FFmpeg Commands For All Needs](https://catswhocode.com/ffmpeg-commands/)
 1. [Video files taking up too much space? Let's shrink them with FFmpeg!](http://coderunner.io/shrink-videos-with-ffmpeg-and-preserve-metadata/)
-        
+1. [H.264 Video Encoding Guide, Choose a preset and tune](https://trac.ffmpeg.org/wiki/Encode/H.264)
+1. [H.265 FFmpeg Encoding Guide](https://trac.ffmpeg.org/wiki/Encode/H.265)
 
 ### Helpful commands
 

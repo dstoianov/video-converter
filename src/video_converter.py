@@ -5,15 +5,16 @@ import time
 
 from src import logger, write_to_csv_file
 
-path = '/Users/dstoianov/Documents/convert-video/'
-# path = '/media/funker/3/FOTO/2014/'
+# path = '/Users/dstoianov/Documents/convert-video/'
+path = '/media/funker/3/FOTO/2016/'
+# path = '/media/funker/3/FOTO/2016/2016-Lenovo-S850-Lena/'
 
 csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv".lower()
 
 files = []
 files_ext = {}
 skipped_file_extensions = ['nfo', 'ini', 'jpg', 'nef', 'txt', 'db', 'png', 'jpeg', 'sh', 'gif', 'pdf', 'ppt', 'mp3',
-                           'xls', 'mht', 'htm', 'zip', ]
+                           'xls', 'mht', 'htm', 'zip']
 
 """
 19 FFmpeg Commands For All Needs
@@ -120,6 +121,11 @@ def convert_videos(files):
     logger.info("Total elapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - g_start)))
 
 
+def aaa(start_time):
+    e = int(time.time() - start_time)
+    return "{:02d}:{:02d}:{:02d}".format(e // 3600, (e % 3600 // 60), e % 60)
+
+
 def collect_statistics():
     logger.info("=== " * 20)
     logger.info("Collect statistics..")
@@ -156,7 +162,7 @@ def read_files_metadata():
     logger.info("=== " * 20)
     logger.info("Collect file metadata..")
     for i, file in enumerate(files, start=1):
-        logger.info(" %s) Processing '%s' file..", str(i), file['name'])
+        logger.info(" %s) Processing '%s' file - '%sMB'..", str(i), file['name'], file['size'])
         properties = get_media_properties(file['path'])
         file.update(properties)
 
@@ -172,15 +178,16 @@ def delete_files(files: list, delete=False):
         logger.info(f"Removing file '{file['path']}'..")
         if delete:
             os.remove(file['path'])
-            # send2trash(file['path'])
+        else:
+            logger.info("\tskipp removing..")
 
 
 def delete_decoded_files(delete):
     all_files = read_files()
     logger.info("=== " * 20)
     logger.info("Delete converted files..")
-    files_converted = list(filter(lambda d: '-crf-23.mp4' not in d['name'], all_files))
-    files_to_delete = list(filter(lambda d: '-crf-23.mp4' in d['name'], all_files))
+    files_converted = list(filter(lambda d: '-crf-23.mp4' in d['name'], all_files))
+    files_to_delete = list(filter(lambda d: '-crf-23.mp4' not in d['name'], all_files))
 
     new_size = sum([i['size'] for i in files_to_delete])
     old_size = sum([i['size'] for i in files_converted])
