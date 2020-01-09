@@ -7,14 +7,19 @@ from src import logger, write_to_csv_file
 
 # path = '/Users/dstoianov/Documents/convert-video/'
 path = '/media/funker/3/FOTO/2016/'
-# path = '/media/funker/3/FOTO/2016/2016-Lenovo-S850-Lena/'
 
 csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv".lower()
 
 files = []
 files_ext = {}
 skipped_file_extensions = ['nfo', 'ini', 'jpg', 'nef', 'txt', 'db', 'png', 'jpeg', 'sh', 'gif', 'pdf', 'ppt', 'mp3',
-                           'xls', 'mht', 'htm', 'zip']
+                           'xls', 'mht', 'htm', 'zip', 'directory', 'ds_store']
+
+params = [
+    {'crf': '23', 'codec': 'libx264'},  # 18 more quality, 23 - default, 28 less quality
+    {'crf': '28', 'codec': 'libx265'}  # 28 - default
+]
+param = params[1]  # 0 or 1
 
 """
 19 FFmpeg Commands For All Needs
@@ -26,7 +31,7 @@ Video files taking up too much space? Let's shrink them with FFmpeg!
 
 ffmpeg -i "input.mp4" -copy_unknown -map_metadata 0 -map 0 -codec copy \
     -codec:v libx264 -pix_fmt yuv420p -crf 23 \
-    -codec:a libfdk_aac -vbr 4 \
+    -codec:a aac -vbr 5 \
     -preset fast "output.mp4"
     
 """
@@ -70,8 +75,6 @@ def read_files():
     # r=root, d=directories, f = files
     for r, d, ff in os.walk(path):
         for file in ff:
-            if file in ['.directory', 'desktop.ini', '.DS_Store']:
-                continue
             if file.split('.')[-1].lower() in skipped_file_extensions:
                 continue
 
@@ -87,19 +90,21 @@ def convert_videos(files):
     logger.info("=== " * 20)
     logger.info("Convert files..")
     # 18 more quality, 23 - default, 28 less quality
-    crf = 23
-    prefix = '-ffmpeg-crf-'
+    crf = param['crf']
+    codec = param['codec']
+    prefix = f"-ffmpeg-{codec}-crf-"
     g_start = time.time()
     for i, filename in enumerate(files, start=1):
-        if prefix in filename['name']:
+        if 'ffmpeg' in filename['name']:
             continue  # skipp already decoded files by prefix
         input_file = filename['path']
         chunks = input_file.split(".")
-        output_file = f"{chunks[0]}{prefix}{crf}.mp4"
+        output_file = f"{chunks[0]}{prefix}{crf}-fast.mp4"
         command = f"ffmpeg -i \"{input_file}\" -copy_unknown -map_metadata 0 -map 0 -codec copy \
-            -codec:v libx264 -pix_fmt yuv420p -crf {crf} \
+            -codec:v {codec} -pix_fmt yuv420p -crf {crf} \
             -codec:a aac -vbr 5 \
-            -preset medium \"{output_file}\""
+            -tag:v hvc1 \
+            -preset fast \"{output_file}\""
         #   presets: slow, medium, fast
         # print(command)
 
@@ -109,7 +114,7 @@ def convert_videos(files):
         if not os.path.isfile(output_file):
             res = subprocess.run(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  universal_newlines=True)
-            if 'Conversion failed!' in res.stdout:
+            if 'Conversion failed!' in res.stdout or 'Invalid argument' in res.stdout:
                 logger.error(res.stdout)
                 raise Exception('Error. Check parameters for decoding.')
 
@@ -119,11 +124,6 @@ def convert_videos(files):
                     filename['size'] / size_mb)
 
     logger.info("Total elapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - g_start)))
-
-
-def aaa(start_time):
-    e = int(time.time() - start_time)
-    return "{:02d}:{:02d}:{:02d}".format(e // 3600, (e % 3600 // 60), e % 60)
 
 
 def collect_statistics():
@@ -155,7 +155,7 @@ def delete_broken_files(delete=False):
             if delete:
                 os.remove(file['path'])
             else:
-                logger.warn("Skipp deleting...")
+                logger.warning("Skipp deleting...")
 
 
 def read_files_metadata():
@@ -186,13 +186,13 @@ def delete_decoded_files(delete):
     all_files = read_files()
     logger.info("=== " * 20)
     logger.info("Delete converted files..")
-    files_converted = list(filter(lambda d: '-crf-23.mp4' in d['name'], all_files))
-    files_to_delete = list(filter(lambda d: '-crf-23.mp4' not in d['name'], all_files))
+    files_converted = list(filter(lambda d: 'ffmpeg' in d['name'], all_files))
+    files_to_delete = list(filter(lambda d: 'ffmpeg' not in d['name'], all_files))
 
-    new_size = sum([i['size'] for i in files_to_delete])
-    old_size = sum([i['size'] for i in files_converted])
-    logger.info("Old size '%.7sMB', new size '%.7sMB', released size '%.7sMB'", old_size, new_size,
-                (old_size - new_size))
+    old_size = sum([i['size'] for i in files_to_delete])
+    new_size = sum([i['size'] for i in files_converted])
+    logger.info("Old size '%.7sMB', new size '%.7sMB', released size '%.7sMB'",
+                old_size, new_size, (old_size - new_size))
 
     delete_files(files_to_delete, delete)
 

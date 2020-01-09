@@ -4,8 +4,8 @@
 # script fo sync folders with files
 #
 
-source="/media/funker/3/FOTO/2011/"
-destination="/media/funker/1.5T/FOTO/2011"
+source="/media/funker/3/FOTO/2011/" # must ended with '/'
+destination="/media/funker/1.5T/FOTO/2011" # must ended without '/'
 
 #source="/media/funker/3/FOTO/2016/"
 #destination="/media/funker/1.5T/FOTO/2016"
@@ -22,7 +22,7 @@ echo "[+] to   '${destination}'"
 # -r, --recursive: Browse into sub-directories for additional files.r
 # --delete                delete extraneous files from destination dirs
 # We can use ‘–delete‘ option to delete files that are not there in source directory.
-#  -t, --times                 preserve times
+#  -t, --times   preserve times
 # -h Shows the information that rsync provides us in a human readable format, the amounts are given in K's, M's, G's and so on.
 # -h, --human-readable        output numbers in a human-readable format
 
