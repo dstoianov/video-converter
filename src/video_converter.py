@@ -3,17 +3,7 @@ import shlex
 import subprocess
 import time
 
-from src import logger, write_to_csv_file
-
-# path = '/Users/dstoianov/Documents/convert-video/'
-path = '/media/funker/3/FOTO/2016/'
-
-csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv".lower()
-
-files = []
-files_ext = {}
-skipped_file_extensions = ['nfo', 'ini', 'jpg', 'nef', 'txt', 'db', 'png', 'jpeg', 'sh', 'gif', 'pdf', 'ppt', 'mp3',
-                           'xls', 'mht', 'htm', 'zip', 'directory', 'ds_store']
+from src import logger, write_to_csv_file, read_files
 
 params = [
     {'crf': '23', 'codec': 'libx264'},  # 18 more quality, 23 - default, 28 less quality
@@ -48,7 +38,7 @@ def get_media_properties(filename):
     for item in results:
 
         if item.startswith('- duration'):
-            properties['duration'] = item.lstrip('- duration: ').strip()
+            properties['duration'] = item.lstrip('- duration: ').strip().split('.')[0]
 
         if item.startswith('- mime_type'):
             properties['mime_type'] = item.lstrip('- mime_type: ').strip()
@@ -68,27 +58,14 @@ def get_media_properties(filename):
     return properties
 
 
-def read_files():
-    logger.info("=== " * 20)
-    logger.info("Collecting files..")
-    local_files = []
-    # r=root, d=directories, f = files
-    for r, d, ff in os.walk(path):
-        for file in ff:
-            if file.split('.')[-1].lower() in skipped_file_extensions:
-                continue
-
-            full_path = os.path.join(r, file)
-            size_mb = round(os.path.getsize(full_path) / 1024 / 1024, 2)
-            local_files.append({'name': file, 'size': size_mb, 'path': full_path})
-
-    logger.info("Total collected '%s' files " % str(len(local_files)))
-    return local_files
+def elapsed_time(started_time):
+    return time.strftime("%H:%M:%S", time.gmtime(time.time() - started_time))
 
 
 def convert_videos(files):
     logger.info("=== " * 20)
     logger.info("Convert files..")
+    errors = []  # Errors counter
     # 18 more quality, 23 - default, 28 less quality
     crf = param['crf']
     codec = param['codec']
@@ -104,6 +81,7 @@ def convert_videos(files):
             -codec:v {codec} -pix_fmt yuv420p -crf {crf} \
             -codec:a aac -vbr 5 \
             -tag:v hvc1 \
+            -max_muxing_queue_size 4000 \
             -preset fast \"{output_file}\""
         #   presets: slow, medium, fast
         # print(command)
@@ -115,21 +93,26 @@ def convert_videos(files):
             res = subprocess.run(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                  universal_newlines=True)
             if 'Conversion failed!' in res.stdout or 'Invalid argument' in res.stdout:
-                logger.error(res.stdout)
-                raise Exception('Error. Check parameters for decoding.')
+                errors.append({'name': filename['name'], 'command': command})
+                # errors.append({'name': filename['name'], 'command': command,'error': res.append})
+                logger.error('Error. Check parameters for decoding.')
+                continue
 
-        size_mb = round(os.path.getsize(output_file) / 1024 / 1024, 2)
-        logger.info("\tElapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - start)))
-        logger.info("\tOld size '%sMB' --> new size '%sMB', ratio '%.4s'", filename['size'], size_mb,
-                    filename['size'] / size_mb)
+        new_size_mb = round(os.path.getsize(output_file) / 1024 / 1024, 2)
+        logger.info("\tConverting time '%s', original size '%sMB' --> new size '%sMB', ratio '%.4s'",
+                    elapsed_time(start), filename['size'], new_size_mb, filename['size'] / new_size_mb)
 
-    logger.info("Total elapsed time for converting '%s'", time.strftime("%H:%M:%S", time.gmtime(time.time() - g_start)))
+    logger.info("Total elapsed time for converting '%s'", elapsed_time(g_start))
+    if len(errors) > 0:
+        logger.error("Files with errors, check this manual")
+        print(errors)
 
 
-def collect_statistics():
+def collect_statistics(files):
     logger.info("=== " * 20)
     logger.info("Collect statistics..")
     file_types = []
+    files_ext = {}
     for file in files:
         f_ext = file['name'].split('.')[-1]
         file_types.append(f_ext)
@@ -141,7 +124,7 @@ def collect_statistics():
 
     logger.info("Check for duplicates..")
 
-    names = list(a['name'] for a in files)
+    names = list(file['name'] for file in files)
     duplicates = list_duplicates(names)
     logger.info("Found '%s' duplicates %s", len(duplicates), duplicates)
 
@@ -158,7 +141,7 @@ def delete_broken_files(delete=False):
                 logger.warning("Skipp deleting...")
 
 
-def read_files_metadata():
+def read_files_metadata(files):
     logger.info("=== " * 20)
     logger.info("Collect file metadata..")
     for i, file in enumerate(files, start=1):
@@ -175,15 +158,16 @@ def list_duplicates(seq):
 
 def delete_files(files: list, delete=False):
     for file in files:
-        logger.info(f"Removing file '{file['path']}'..")
+        message = f"Removing file '{file['path']}'.."
         if delete:
+            logger.info(message)
             os.remove(file['path'])
         else:
-            logger.info("\tskipp removing..")
+            logger.info(f"\t{message} --> skipp removing..")
 
 
-def delete_decoded_files(delete):
-    all_files = read_files()
+def delete_decoded_files(path, extetions, delete):
+    all_files = read_files(path=path, skipped_file_extensions=extetions)
     logger.info("=== " * 20)
     logger.info("Delete converted files..")
     files_converted = list(filter(lambda d: 'ffmpeg' in d['name'], all_files))
@@ -198,15 +182,22 @@ def delete_decoded_files(delete):
 
 
 if __name__ == "__main__":
-    files = read_files()
-    collect_statistics()
+    # path = '/Users/dstoianov/Documents/convert-video/'
+    path = '/media/funker/3/FOTO/2013/'
+    skipped_file_extensions = ['nfo', 'ini', 'jpg', 'nef', 'txt', 'db', 'png', 'jpeg', 'sh', 'gif', 'pdf', 'ppt', 'mp3',
+                               'xls', 'mht', 'htm', 'zip', 'directory', 'ds_store']
 
-    read_files_metadata()
+    files = read_files(path=path, skipped_file_extensions=skipped_file_extensions)
+    collect_statistics(files)
+
+    read_files_metadata(files)
+
     delete_broken_files(delete=False)
     fnames = ['name', 'size', 'duration', 'mime_type', 'width', 'height', 'creation_date', 'last_modification', 'path']
+    csv_file_name = f"{path.replace('/', '_').replace(' ', '_')}.csv".lower()
     write_to_csv_file(csv_file_name, files, fnames)
-    convert_videos(files)
+    # convert_videos(files)
 
-    delete_decoded_files(delete=False)
+    delete_decoded_files(path=path, extetions=skipped_file_extensions, delete=False)
 
     logger.info('Done')

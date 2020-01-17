@@ -4,11 +4,20 @@
 # script fo sync folders with files
 #
 
-source="/media/funker/3/FOTO/2011/" # must ended with '/'
-destination="/media/funker/1.5T/FOTO/2011" # must ended without '/'
+#year="2020"
+#source="/media/funker/3/FOTO/${year}/" # must ended with '/'
+#destination="/media/funker/1.5T/FOTO/${year}" # must ended without '/'
 
-#source="/media/funker/3/FOTO/2016/"
-#destination="/media/funker/1.5T/FOTO/2016"
+# Folders
+source="/media/funker/3/FOTO/" # must ended with '/'
+destination="/media/funker/1.5T/FOTO" # must ended without '/'
+
+# folder="2010"
+#source="/media/funker/3/FOTO/${folder}/" # must ended with '/'
+#destination="funker@192.168.178.100:/media/files/${folder}" # must ended without '/'
+
+#rsync [OPTION]... SRC [SRC]... rsync://[USER@]HOST[:PORT]/DEST
+
 
 start_date=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -28,7 +37,17 @@ echo "[+] to   '${destination}'"
 
 # test run
 #sudo rsync --recursive --human-readable --times --verbose --dry-run --progress ${source} ${destination}
-rsync --recursive --human-readable --times --verbose --dry-run --delete --progress ${source} ${destination}
+#rsync --recursive 'ssh -p 21598' --human-readable --times --verbose --dry-run --delete --progress ${source} ${destination}
+
+
+#rsync --recursive --human-readable --times --verbose --delete --dry-run --progress \
+rsync --recursive --human-readable --times --verbose --delete --dry-run --progress \
+        --exclude '.directory' --exclude 'Lightroom/*' ${source} ${destination}
+
+# for sync via ssh
+#rsync --recursive --human-readable --times --verbose --delete --dry-run --progress \
+#        --exclude '.directory' --exclude 'Lightroom/*' \
+#         -e 'ssh -p 21598' ${source} ${destination}
 
 #sudo rsync -aAXv --delete --exclude=/dev/* --exclude=/proc/* --exclude=/sys/* --exclude=/tmp/* \
 #    --exclude=/run/* --exclude=/mnt/* --exclude=/media/* --exclude="swapfile" --exclude="lost+found" \

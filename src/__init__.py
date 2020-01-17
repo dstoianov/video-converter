@@ -1,5 +1,6 @@
 import csv
 import logging
+import os
 from typing import List
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
@@ -27,3 +28,21 @@ def write_to_csv_file(csv_file_name: str, files: list, fnames: List[str]):
         writer.writeheader()
         for file in sorted_list:
             writer.writerow(file)
+
+
+def read_files(path: str, skipped_file_extensions: list):
+    logger.info("=== " * 20)
+    logger.info("Collecting files in folder '%s'..", path)
+    local_files = []
+    # r=root, d=directories, f = files
+    for r, d, ff in os.walk(path):
+        for file in ff:
+            if file.split('.')[-1].lower() in skipped_file_extensions:
+                continue
+
+            full_path = os.path.join(r, file)
+            size_mb = round(os.path.getsize(full_path) / 1024 / 1024, 2)
+            local_files.append({'name': file, 'size': size_mb, 'path': full_path})
+
+    logger.info("Total collected '%s' files " % str(len(local_files)))
+    return local_files
