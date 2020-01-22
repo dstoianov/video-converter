@@ -12,6 +12,10 @@
 source="/media/funker/3/FOTO/" # must ended with '/'
 destination="/media/funker/1.5T/FOTO" # must ended without '/'
 
+# Dev Folders
+#source="/media/funker/1.5T/dev/" # must ended with '/'
+#destination="/media/funker/250GBWD/dev" # must ended without '/'
+
 # folder="2010"
 #source="/media/funker/3/FOTO/${folder}/" # must ended with '/'
 #destination="funker@192.168.178.100:/media/files/${folder}" # must ended without '/'
